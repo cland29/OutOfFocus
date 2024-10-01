@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino Web Serial Control</title>
+</head>
+<body>
+    <h1>Arduino Control</h1>
+    <button id="connect">Connect to Arduino</button>
+    <textarea id="message" placeholder="Type your message here..."></textarea>
+    <button id="send">Send Message</button>
+    <pre id="output"></pre>
+
+    <script>
+        let port;
+        let reader;
+        let inputDone;
+        let outputDone;
+        const output = document.getElementById('output');
+
+        document.getElementById('connect').addEventListener('click', async () => {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            readLoop(); // Start reading from the Arduino
+        });
+
+        document.getElementById('send').addEventListener('click', async () => {
+            const message = document.getElementById('message').value;
+            console.log('Sending message:', message);
+            const writer = port.writable.getWriter();
+            const data = new TextEncoder().encode(message + '\n');
+            await writer.write(data);
+            writer.releaseLock();
+        });
+
+        async function readLoop() {
+            const decoder = new TextDecoderStream();
+            inputDone = port.readable.pipeTo(decoder.writable);
+            reader = decoder.readable.getReader();
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                output.textContent += `${value}`;
+            }
+        }
+    </script>
+</body>
+</html>
